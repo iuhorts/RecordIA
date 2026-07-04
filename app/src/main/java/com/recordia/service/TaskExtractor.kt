@@ -84,7 +84,7 @@ class TaskExtractor(
             val saved = task.copy(id = id)
             savedTasks.add(saved)
 
-            showTaskCreatedNotification(repository.getContext(), saved)
+            showTaskCreatedNotification(repository.context, saved)
         }
 
         return savedTasks

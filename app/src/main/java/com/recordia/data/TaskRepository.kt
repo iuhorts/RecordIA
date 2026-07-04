@@ -6,8 +6,6 @@ import kotlinx.coroutines.flow.Flow
 class TaskRepository(val context: Context) {
     private val taskDao = TaskDatabase.getInstance(context).taskDao()
 
-    fun getContext(): Context = context
-
     fun getAllTasks(): Flow<List<Task>> = taskDao.getAllTasks()
 
     fun getPendingTasks(): Flow<List<Task>> = taskDao.getPendingTasks()
