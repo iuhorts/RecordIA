@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">RecordIA</string>
+    <string name="listening_channel_name">Escucha Activa</string>
+    <string name="listening_channel_desc">Notificación del servicio de escucha</string>
+    <string name="task_channel_name">Recordatorios</string>
+    <string name="task_channel_desc">Notificaciones de tareas pendientes</string>
+    <string name="listening_notification_text">RecordIA está escuchando...</string>
+</resources>
