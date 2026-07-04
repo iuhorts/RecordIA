@@ -4,6 +4,7 @@ import android.util.Log
 import com.recordia.data.Task
 import com.recordia.data.TaskRepository
 import com.recordia.network.ExtractedTask
+import com.recordia.network.GeminiClient
 import com.recordia.network.OpenAIClient
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -11,11 +12,12 @@ import java.util.Locale
 
 class TaskExtractor(
     private val apiKey: String,
+    private val aiProvider: String = "openai",
     private val repository: TaskRepository
 ) {
-    private val client = OpenAIClient()
+    private val openAIClient = OpenAIClient()
+    private val geminiClient = GeminiClient()
     private val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.US)
-    private val timeFormat = SimpleDateFormat("HH:mm", Locale.US)
 
     suspend fun processText(text: String): List<Task> {
         if (apiKey.isBlank()) {
@@ -23,14 +25,18 @@ class TaskExtractor(
             return emptyList()
         }
 
-        val result = client.extractTasksFromText(text, apiKey)
+        val result = when (aiProvider) {
+            "gemini" -> geminiClient.extractTasksFromText(text, apiKey)
+            else -> openAIClient.extractTasksFromText(text, apiKey)
+        }
 
         return result.fold(
             onSuccess = { extractedTasks ->
+                Log.i("TaskExtractor", "Extracted ${extractedTasks.size} tasks: $extractedTasks")
                 saveExtractedTasks(extractedTasks)
             },
             onFailure = { error ->
-                Log.e("TaskExtractor", "Extraction failed", error)
+                Log.e("TaskExtractor", "Extraction failed: ${error.message}", error)
                 emptyList()
             }
         )
@@ -42,14 +48,28 @@ class TaskExtractor(
             return emptyList()
         }
 
-        val result = client.analyzeAndExtractTasks(audioBase64, apiKey)
+        val result = when (aiProvider) {
+            "gemini" -> {
+                Log.w("TaskExtractor", "Gemini does not support direct audio processing, transcribing first")
+                val transcription = openAIClient.transcribeAudio(audioBase64, apiKey)
+                transcription.fold(
+                    onSuccess = { text ->
+                        geminiClient.extractTasksFromText(text, apiKey)
+                    },
+                    onFailure = { error ->
+                        Result.failure(error)
+                    }
+                )
+            }
+            else -> openAIClient.analyzeAndExtractTasks(audioBase64, apiKey)
+        }
 
         return result.fold(
             onSuccess = { extractedTasks ->
                 saveExtractedTasks(extractedTasks)
             },
             onFailure = { error ->
-                Log.e("TaskExtractor", "Audio extraction failed", error)
+                Log.e("TaskExtractor", "Audio extraction failed: ${error.message}", error)
                 emptyList()
             }
         )
@@ -59,13 +79,15 @@ class TaskExtractor(
         val savedTasks = mutableListOf<Task>()
 
         for (extracted in extractedTasks) {
+            if (extracted.title.isBlank()) continue
+
             val dueDateMillis = parseDateTime(extracted.dueDate, extracted.time)
 
             val task = Task(
                 title = extracted.title,
                 description = extracted.description,
                 dueDateMillis = dueDateMillis,
-                source = "voice_auto"
+                source = "ai_auto"
             )
 
             val id = repository.insertTask(task)
@@ -91,12 +113,10 @@ class TaskExtractor(
 
         if (timeStr.isNotBlank()) {
             try {
-                val timeCal = Calendar.getInstance()
-                val time = timeFormat.parse(timeStr)
-                if (time != null) {
-                    timeCal.time = time
-                    calendar.set(Calendar.HOUR_OF_DAY, timeCal.get(Calendar.HOUR_OF_DAY))
-                    calendar.set(Calendar.MINUTE, timeCal.get(Calendar.MINUTE))
+                val parts = timeStr.split(":")
+                if (parts.size == 2) {
+                    calendar.set(Calendar.HOUR_OF_DAY, parts[0].toIntOrNull() ?: 12)
+                    calendar.set(Calendar.MINUTE, parts[1].toIntOrNull() ?: 0)
                 }
             } catch (e: Exception) {
                 Log.w("TaskExtractor", "Failed to parse time: $timeStr")

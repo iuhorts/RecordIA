@@ -57,6 +57,7 @@ class ListeningService : Service() {
     private lateinit var repository: TaskRepository
     private lateinit var taskExtractor: TaskExtractor
     private var apiKey: String = ""
+    private var aiProvider: String = "openai"
 
     private var audioBuffer: ByteArrayOutputStream = ByteArrayOutputStream()
     private var silenceDuration: Long = 0
@@ -85,15 +86,14 @@ class ListeningService : Service() {
                 return START_STICKY
             }
             ACTION_RESUME -> {
-                val apiKeyExtra = intent.getStringExtra("api_key") ?: apiKey
-                if (apiKeyExtra.isNotBlank()) {
-                    apiKey = apiKeyExtra
-                }
+                intent.getStringExtra("api_key")?.let { apiKey = it }
+                intent.getStringExtra("ai_provider")?.let { aiProvider = it }
                 resumeListening()
                 return START_STICKY
             }
             else -> {
                 apiKey = intent?.getStringExtra("api_key") ?: ""
+                aiProvider = intent?.getStringExtra("ai_provider") ?: "openai"
                 startListening()
             }
         }
@@ -156,7 +156,7 @@ class ListeningService : Service() {
 
         startForeground(NOTIFICATION_ID, buildNotification())
 
-        taskExtractor = TaskExtractor(apiKey, repository)
+        taskExtractor = TaskExtractor(apiKey, aiProvider, repository)
 
         recordingJob = serviceScope.launch {
             startAudioCapture()
