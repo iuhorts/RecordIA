@@ -51,10 +51,12 @@ class GeminiClient {
     ): Result<List<ExtractedTask>> = withContext(Dispatchers.IO) {
         try {
             val prompt = """
-Eres un asistente que extrae tareas de conversaciones en español.
-Analiza el audio transcrito y extrae cualquier tarea mencionada.
+Escucha el audio y extrae las tareas mencionadas.
+1. Primero transcribe el audio al español
+2. Luego extrae cualquier tarea de la transcripción
+3. Si el usuario dice algo como "tengo que...", "necesito...", "acordarme de...", "comprar...", "hacer...", "llamar a...", "recordar...", es una tarea
 Responde SOLO con un JSON array de objetos con campos: title, description, dueDate, time
-Si no hay tareas, responde con un array vacío [].
+Si no hay tareas claras, responde con un array vacío [].
             """.trimIndent()
 
             val requestBody = GeminiRequest(
@@ -83,6 +85,8 @@ Si no hay tareas, responde con un array vacío [].
                 Log.e("GeminiClient", "API error: $responseBody")
                 return@withContext Result.failure(Exception("API error: ${response.code}"))
             }
+
+            Log.d("GeminiClient", "Raw response: ${responseBody?.take(500)}")
 
             val geminiResponse = gson.fromJson(responseBody, GeminiResponse::class.java)
             val content = geminiResponse.candidates
