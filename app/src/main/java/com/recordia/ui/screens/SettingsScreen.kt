@@ -5,13 +5,17 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.PowerManager
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
@@ -315,6 +319,63 @@ fun SettingsScreen(
                         enabled = textInput.isNotBlank() && apiKey.isNotBlank()
                     ) {
                         Text("Extraer Tarea")
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            var showDebug by remember { mutableStateOf(false) }
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Depuración", style = MaterialTheme.typography.titleLarge)
+                        Button(onClick = { showDebug = !showDebug }) {
+                            Text(if (showDebug) "Ocultar" else "Mostrar")
+                        }
+                    }
+                    if (showDebug) {
+                        val logs = remember { com.recordia.service.DebugLog.getLogs() }
+                        Text(
+                            text = logs.joinToString("\n").ifEmpty { "Sin logs aún" },
+                            style = MaterialTheme.typography.bodySmall,
+                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(max = 300.dp)
+                                .verticalScroll(rememberScrollState())
+                                .padding(8.dp)
+                                .background(MaterialTheme.colorScheme.surfaceVariant)
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row {
+                            Button(onClick = { com.recordia.service.DebugLog.clear() }) {
+                                Text("Limpiar")
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Button(
+                                onClick = {
+                                    val intent = Intent(
+                                        context,
+                                        ListeningService::class.java
+                                    ).apply {
+                                        putExtra("api_key", apiKey)
+                                        putExtra("ai_provider", currentProvider)
+                                    }
+                                    ContextCompat.startForegroundService(context, intent)
+                                }
+                            ) {
+                                Text("Reiniciar Servicio")
+                            }
+                        }
                     }
                 }
             }

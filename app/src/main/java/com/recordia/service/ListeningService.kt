@@ -262,7 +262,9 @@ class ListeningService : Service() {
                     val currentTime = System.currentTimeMillis()
 
                     if (currentTime % 5000 < 50) {
-                        Log.d("ListeningService", "RMS=$rms threshold=$silenceThreshold speaking=$isSpeaking bufferSize=${totalAudioBuffer.size()}")
+                        val msg = "RMS=$rms threshold=$silenceThreshold speaking=$isSpeaking bufferSize=${totalAudioBuffer.size()}"
+                        Log.d("ListeningService", msg)
+                        DebugLog.log("ListeningService", msg)
                     }
 
                     if (rms > silenceThreshold) {
@@ -271,7 +273,9 @@ class ListeningService : Service() {
                         silenceDuration = 0
 
                         if (!isSpeaking) {
-                            Log.i("ListeningService", "Speech detected, RMS=$rms")
+                            val msg = "Speech detected, RMS=$rms"
+                            Log.i("ListeningService", msg)
+                            DebugLog.log("ListeningService", msg)
                             isSpeaking = true
                         }
                     } else {
@@ -321,7 +325,9 @@ class ListeningService : Service() {
 
             if (tasks.isNotEmpty()) {
                 val taskNames = tasks.joinToString(", ") { it.title }
-                Log.i("ListeningService", "Tasks created: $taskNames")
+                val msg = "Tasks created: $taskNames"
+                Log.i("ListeningService", msg)
+                DebugLog.log("ListeningService", msg)
 
                 updateNotification("Tarea(s): $taskNames")
 
@@ -338,7 +344,9 @@ class ListeningService : Service() {
 
             wavFile.delete()
         } catch (e: Exception) {
-            Log.e("ListeningService", "Error processing audio", e)
+            val errMsg = "Error processing audio: ${e.message}"
+            Log.e("ListeningService", errMsg, e)
+            DebugLog.log("ListeningService", errMsg)
             updateNotification("Error: ${e.message?.take(50)}")
             delay(2000)
             updateNotification("Escuchando...")
