@@ -207,12 +207,26 @@ fun SettingsScreen(
                             checked = isListening,
                             onCheckedChange = { enabled ->
                                 if (enabled) {
-                                    if (hasMicPermission) {
-                                    val intent = Intent(context, ListeningService::class.java).apply {
-                                        putExtra("api_key", apiKey)
-                                        putExtra("ai_provider", currentProvider)
+                                    if (apiKey.isBlank()) {
+                                        android.widget.Toast.makeText(
+                                            context,
+                                            "Configura tu API Key de Gemini primero",
+                                            android.widget.Toast.LENGTH_LONG
+                                        ).show()
+                                        return@Switch
                                     }
+                                    if (hasMicPermission) {
+                                        val intent = Intent(context, ListeningService::class.java).apply {
+                                            putExtra("api_key", apiKey)
+                                            putExtra("ai_provider", currentProvider)
+                                        }
                                         ContextCompat.startForegroundService(context, intent)
+                                    } else {
+                                        android.widget.Toast.makeText(
+                                            context,
+                                            "Permiso de micrófono no concedido",
+                                            android.widget.Toast.LENGTH_LONG
+                                        ).show()
                                     }
                                 } else {
                                     val intent = Intent(context, ListeningService::class.java).apply {

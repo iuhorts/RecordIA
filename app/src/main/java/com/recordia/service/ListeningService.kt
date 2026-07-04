@@ -151,6 +151,17 @@ class ListeningService : Service() {
             return
         }
 
+        if (apiKey.isBlank()) {
+            Log.w("ListeningService", "API key not configured")
+            android.widget.Toast.makeText(
+                this,
+                "Configura tu API Key en Ajustes primero",
+                android.widget.Toast.LENGTH_LONG
+            ).show()
+            stopSelf()
+            return
+        }
+
         _isListening.value = true
         _isPaused.value = false
 
@@ -291,6 +302,8 @@ class ListeningService : Service() {
         if (audioData.size() < sampleRate) return
 
         try {
+            updateNotification("Procesando audio...")
+
             val audioBytes = audioData.toByteArray()
 
             val wavFile = File(cacheDir, "temp_audio_${System.currentTimeMillis()}.wav")
@@ -305,6 +318,8 @@ class ListeningService : Service() {
                 val taskNames = tasks.joinToString(", ") { it.title }
                 Log.i("ListeningService", "Tasks created: $taskNames")
 
+                updateNotification("Tarea(s): $taskNames")
+
                 withContext(Dispatchers.Main) {
                     android.widget.Toast.makeText(
                         this@ListeningService,
@@ -312,12 +327,29 @@ class ListeningService : Service() {
                         android.widget.Toast.LENGTH_SHORT
                     ).show()
                 }
+            } else {
+                updateNotification("Escuchando...")
             }
 
             wavFile.delete()
         } catch (e: Exception) {
             Log.e("ListeningService", "Error processing audio", e)
+            updateNotification("Error: ${e.message?.take(50)}")
+            delay(2000)
+            updateNotification("Escuchando...")
         }
+    }
+
+    private fun updateNotification(text: String) {
+        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle("RecordIA")
+            .setContentText(text)
+            .setSmallIcon(android.R.drawable.ic_menu_manage)
+            .setOngoing(true)
+            .setSilent(true)
+            .build()
+        val nm = NotificationManagerCompat.from(this)
+        nm.notify(NOTIFICATION_ID, notification)
     }
 
     private fun calculateRMS(buffer: ShortArray, readSize: Int): Double {
