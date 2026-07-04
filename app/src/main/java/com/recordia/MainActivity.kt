@@ -1,6 +1,5 @@
 package com.recordia
 
-import android.Manifest
 import android.content.Intent
 import android.os.Bundle
 import android.speech.RecognizerIntent
@@ -9,13 +8,10 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.recordia.service.ListeningService
 import com.recordia.ui.screens.AddTaskScreen
 import com.recordia.ui.screens.SettingsScreen
 import com.recordia.ui.screens.TaskListScreen
@@ -37,7 +33,6 @@ class MainActivity : ComponentActivity() {
 fun AppNavigation() {
     val navController = rememberNavController()
     val viewModel: TaskViewModel = viewModel()
-    var voiceResult by remember { mutableStateOf("") }
 
     val voiceLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
@@ -46,17 +41,6 @@ fun AppNavigation() {
             if (results.isNotEmpty()) {
                 viewModel.processTextInput(results[0])
             }
-        }
-    }
-
-    val permissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions ->
-        val allGranted = permissions.values.all { it }
-        if (allGranted) {
-            val context = navController.context
-            val intent = Intent(context, ListeningService::class.java)
-            ContextCompat.startForegroundService(context, intent)
         }
     }
 
