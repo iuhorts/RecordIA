@@ -71,6 +71,37 @@ class BootReceiver : BroadcastReceiver() {
     }
 }
 
+fun showTaskCreatedNotification(context: Context, task: Task) {
+    val channelId = "recordia_tasks_created"
+    val channel = NotificationChannelCompat.Builder(
+        channelId,
+        NotificationManagerCompat.IMPORTANCE_HIGH
+    ).setName("Tareas creadas")
+        .setDescription("Notificaciones cuando se crea una tarea por voz")
+        .build()
+    NotificationManagerCompat.from(context).createNotificationChannel(channel)
+
+    val openIntent = Intent(context, MainActivity::class.java).apply {
+        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+    }
+    val pendingIntent = PendingIntent.getActivity(
+        context, task.id.toInt(), openIntent,
+        PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+    )
+
+    val notification = NotificationCompat.Builder(context, channelId)
+        .setSmallIcon(android.R.drawable.ic_input_add)
+        .setContentTitle("Nueva tarea")
+        .setContentText(task.title)
+        .setStyle(NotificationCompat.BigTextStyle().bigText(task.title))
+        .setPriority(NotificationCompat.PRIORITY_HIGH)
+        .setContentIntent(pendingIntent)
+        .setAutoCancel(true)
+        .build()
+
+    NotificationManagerCompat.from(context).notify(task.id.toInt() + 10000, notification)
+}
+
 fun scheduleTaskReminder(context: Context, task: Task) {
     val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
 

@@ -3,8 +3,10 @@ package com.recordia.data
 import android.content.Context
 import kotlinx.coroutines.flow.Flow
 
-class TaskRepository(context: Context) {
+class TaskRepository(val context: Context) {
     private val taskDao = TaskDatabase.getInstance(context).taskDao()
+
+    fun getContext(): Context = context
 
     fun getAllTasks(): Flow<List<Task>> = taskDao.getAllTasks()
 

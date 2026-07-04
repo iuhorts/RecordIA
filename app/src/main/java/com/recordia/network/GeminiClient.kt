@@ -20,7 +20,13 @@ data class Content(
 )
 
 data class Part(
-    val text: String
+    val text: String? = null,
+    val inlineData: InlineData? = null
+)
+
+data class InlineData(
+    val mimeType: String,
+    val data: String
 )
 
 data class GeminiResponse(
@@ -38,6 +44,69 @@ class GeminiClient {
         .readTimeout(30, TimeUnit.SECONDS)
         .writeTimeout(30, TimeUnit.SECONDS)
         .build()
+
+    suspend fun transcribeAndExtract(
+        audioBase64: String,
+        apiKey: String
+    ): Result<List<ExtractedTask>> = withContext(Dispatchers.IO) {
+        try {
+            val prompt = """
+Eres un asistente que extrae tareas de conversaciones en español.
+Analiza el audio transcrito y extrae cualquier tarea mencionada.
+Responde SOLO con un JSON array de objetos con campos: title, description, dueDate, time
+Si no hay tareas, responde con un array vacío [].
+            """.trimIndent()
+
+            val requestBody = GeminiRequest(
+                contents = listOf(
+                    Content(
+                        parts = listOf(
+                            Part(inlineData = InlineData(mimeType = "audio/wav", data = audioBase64)),
+                            Part(text = prompt)
+                        )
+                    )
+                )
+            )
+
+            val jsonBody = gson.toJson(requestBody)
+            val mediaType = "application/json; charset=utf-8".toMediaType()
+
+            val request = Request.Builder()
+                .url("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$apiKey")
+                .post(jsonBody.toRequestBody(mediaType))
+                .build()
+
+            val response = client.newCall(request).execute()
+            val responseBody = response.body?.string()
+
+            if (!response.isSuccessful) {
+                Log.e("GeminiClient", "API error: $responseBody")
+                return@withContext Result.failure(Exception("API error: ${response.code}"))
+            }
+
+            val geminiResponse = gson.fromJson(responseBody, GeminiResponse::class.java)
+            val content = geminiResponse.candidates
+                ?.firstOrNull()
+                ?.content
+                ?.parts
+                ?.firstOrNull()
+                ?.text ?: ""
+
+            val cleaned = content.trim()
+                .removePrefix("```json")
+                .removePrefix("```")
+                .removeSuffix("```")
+                .trim()
+
+            val tasks = gson.fromJson(cleaned, Array<ExtractedTask>::class.java)
+                ?.toList() ?: emptyList()
+
+            Result.success(tasks)
+        } catch (e: Exception) {
+            Log.e("GeminiClient", "Error transcribing with Gemini", e)
+            Result.failure(e)
+        }
+    }
 
     suspend fun extractTasksFromText(
         text: String,

@@ -6,6 +6,7 @@ import com.recordia.data.TaskRepository
 import com.recordia.network.ExtractedTask
 import com.recordia.network.GeminiClient
 import com.recordia.network.OpenAIClient
+import com.recordia.notification.showTaskCreatedNotification
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -49,18 +50,7 @@ class TaskExtractor(
         }
 
         val result = when (aiProvider) {
-            "gemini" -> {
-                Log.w("TaskExtractor", "Gemini does not support direct audio processing, transcribing first")
-                val transcription = openAIClient.transcribeAudio(audioBase64, apiKey)
-                transcription.fold(
-                    onSuccess = { text ->
-                        geminiClient.extractTasksFromText(text, apiKey)
-                    },
-                    onFailure = { error ->
-                        Result.failure(error)
-                    }
-                )
-            }
+            "gemini" -> geminiClient.transcribeAndExtract(audioBase64, apiKey)
             else -> openAIClient.analyzeAndExtractTasks(audioBase64, apiKey)
         }
 
@@ -91,7 +81,10 @@ class TaskExtractor(
             )
 
             val id = repository.insertTask(task)
-            savedTasks.add(task.copy(id = id))
+            val saved = task.copy(id = id)
+            savedTasks.add(saved)
+
+            showTaskCreatedNotification(repository.getContext(), saved)
         }
 
         return savedTasks
