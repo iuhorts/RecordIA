@@ -284,6 +284,7 @@ class ListeningService : Service() {
                             lastAudioTime = currentTime
 
                             if (silenceDuration >= maxSilenceMs) {
+                                DebugLog.log("ListeningService", "Silence timeout, processing buffer size=${totalAudioBuffer.size()}")
                                 processAudioChunk(totalAudioBuffer)
                                 totalAudioBuffer = ByteArrayOutputStream()
                                 isSpeaking = false
@@ -308,10 +309,16 @@ class ListeningService : Service() {
     }
 
     private suspend fun processAudioChunk(audioData: ByteArrayOutputStream) {
-        if (audioData.size() < sampleRate) return
+        val size = audioData.size()
+        DebugLog.log("ListeningService", "processAudioChunk called, size=$size min=${sampleRate}")
+        if (size < sampleRate) {
+            DebugLog.log("ListeningService", "Audio too short, skipping")
+            return
+        }
 
         try {
             updateNotification("Procesando audio...")
+            DebugLog.log("ListeningService", "Sending to Gemini...")
 
             val audioBytes = audioData.toByteArray()
 
@@ -323,6 +330,7 @@ class ListeningService : Service() {
 
             val tasks = taskExtractor.processAudioAndExtract(base64Audio)
 
+            DebugLog.log("ListeningService", "Gemini returned ${tasks.size} tasks")
             if (tasks.isNotEmpty()) {
                 val taskNames = tasks.joinToString(", ") { it.title }
                 val msg = "Tasks created: $taskNames"
