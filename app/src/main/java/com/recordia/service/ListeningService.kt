@@ -20,7 +20,6 @@ import androidx.core.app.NotificationManagerCompat
 import com.recordia.MainActivity
 import com.recordia.R
 import com.recordia.data.TaskRepository
-import com.recordia.notification.NotificationHelper
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -29,8 +28,8 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
@@ -235,7 +234,7 @@ class ListeningService : Service() {
             var lastAudioTime = System.currentTimeMillis()
             var totalAudioBuffer = ByteArrayOutputStream()
 
-            while (isActive && _isListening.value && !_isPaused.value) {
+            while (kotlin.coroutines.coroutineContext.isActive && _isListening.value && !_isPaused.value) {
                 val read = audioRecord?.read(buffer, 0, buffer.size) ?: -1
 
                 if (read > 0) {
@@ -305,7 +304,7 @@ class ListeningService : Service() {
                 val taskNames = tasks.joinToString(", ") { it.title }
                 Log.i("ListeningService", "Tasks created: $taskNames")
 
-                launch(Dispatchers.Main) {
+                withContext(Dispatchers.Main) {
                     android.widget.Toast.makeText(
                         this@ListeningService,
                         "RecordIA: $taskNames",
