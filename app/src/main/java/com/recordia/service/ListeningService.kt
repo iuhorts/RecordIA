@@ -57,14 +57,14 @@ class ListeningService : Service() {
     private lateinit var repository: TaskRepository
     private lateinit var taskExtractor: TaskExtractor
     private var apiKey: String = ""
-    private var aiProvider: String = "openai"
+    private var aiProvider: String = "gemini"
 
     private var audioBuffer: ByteArrayOutputStream = ByteArrayOutputStream()
     private var silenceDuration: Long = 0
     private var isSpeaking: Boolean = false
 
     private val sampleRate = 16000
-    private val silenceThreshold = 500
+    private val silenceThreshold = 100
     private val maxSilenceMs = 2000L
     private val chunkDurationMs = 30000L
 
@@ -93,7 +93,7 @@ class ListeningService : Service() {
             }
             else -> {
                 apiKey = intent?.getStringExtra("api_key") ?: ""
-                aiProvider = intent?.getStringExtra("ai_provider") ?: "openai"
+                aiProvider = intent?.getStringExtra("ai_provider") ?: "gemini"
                 startListening()
             }
         }
@@ -261,12 +261,17 @@ class ListeningService : Service() {
                     val rms = calculateRMS(buffer, read)
                     val currentTime = System.currentTimeMillis()
 
+                    if (currentTime % 5000 < 50) {
+                        Log.d("ListeningService", "RMS=$rms threshold=$silenceThreshold speaking=$isSpeaking bufferSize=${totalAudioBuffer.size()}")
+                    }
+
                     if (rms > silenceThreshold) {
                         totalAudioBuffer.write(byteBuffer)
                         lastAudioTime = currentTime
                         silenceDuration = 0
 
                         if (!isSpeaking) {
+                            Log.i("ListeningService", "Speech detected, RMS=$rms")
                             isSpeaking = true
                         }
                     } else {
